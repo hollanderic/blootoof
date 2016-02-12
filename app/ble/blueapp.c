@@ -33,6 +33,10 @@
 
 
 //   UUID  - 080223be-181a-4f59-b74a-ea5d04af35bc
+ const uint8_t uuid1[16] =   {0xbc, 0x35, 0xaf, 0x04, \
+                            0x5d, 0xea, 0x4a, 0xb7, \
+                            0x59, 0x4f, 0x1a, 0x18, \
+                            0xbe, 0x23, 0x02, 0x08 };
 
 void ble_start(void);
 static void ble_init(const struct app_descriptor *app);
@@ -49,7 +53,7 @@ STATIC_COMMAND_END(bletests);
 
 static ble_t ble1;
 static thread_t *blethread;
-static const char lkbeacon[] = "LKBeacon";
+static const char lkbeacon[] = "LK";
 
 void ble_start(void) {
 
@@ -60,16 +64,17 @@ void ble_start(void) {
 
 static int ble_run(void * args)
 {
-
+    int32_t i =0;
     ble_initialize( &ble1 );
-    ble_init_adv_nonconn_ind(&ble1);
-    ble_gatt_add_flags(&ble1);
-    ble_gatt_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon));
 
     while (1) {
         //if ( mutex_acquire_timeout(&(ble_p->lock),0) == NO_ERROR )
+        ble_init_adv_nonconn_ind(&ble1);
+        ble_gap_add_flags(&ble1);
+        ble_gap_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon));
+        ble_gap_add_service_data_128(&ble1, uuid1, i++);
 
-   			switch(ble1.state) {
+   			//switch(ble1.state) {
 
         		ble1.channel_index = 37;
         		ble_radio_tx(&ble1);
@@ -79,7 +84,7 @@ static int ble_run(void * args)
 
 		    	ble1.channel_index = 39;
         		ble_radio_tx(&ble1);
-        	}
+        	//}
 
 	    thread_sleep(1000);
 	}

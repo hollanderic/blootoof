@@ -137,15 +137,17 @@ typedef struct {
 void ble_initialize(ble_t *ble_p);
 void ble_set_sleepclock_accuracy(ble_t * instance_p, scan_clock_accuracy_t accuracy);
 ble_status_t ble_init_adv_nonconn_ind( ble_t *ble_p);
-ble_status_t ble_gatt_add_flags(ble_t * ble_p);
-ble_status_t ble_gatt_add_shortname(ble_t *ble_p, uint8_t * str, uint8_t len);
+ble_status_t ble_gap_add_flags(ble_t * ble_p);
+ble_status_t ble_gap_add_shortname(ble_t *ble_p, uint8_t * str, uint8_t len);
+ble_status_t ble_gap_add_service_data_128(ble_t *ble_p, uint8_t * uuid, uint32_t data);
+
 
 void ble_dump_packet(ble_t *ble_p);
 
 ble_status_t ble_go_idle(ble_t *ble_p);
 
 #define BLE_MAX_ADV_PDU_SIZE                64
-#define BLE_MAX_DATA_PDU_SIZE               32
+#define BLE_MAX_DATA_PDU_SIZE               37
 
 
 #define BLE_PREAMBLE_ADVERTISING            0Xaa

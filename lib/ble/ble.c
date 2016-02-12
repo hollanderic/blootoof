@@ -91,7 +91,7 @@ ble_status_t ble_go_idle(ble_t *ble_p){
     return BLE_NO_ERROR;
 }
 
-ble_status_t ble_gatt_add_flags(ble_t * ble_p){
+ble_status_t ble_gap_add_flags(ble_t * ble_p){
    BLE_CHECK_AND_LOCK(ble_p);
 
     if ( _ble_remaining_pdu(ble_p) < 3 ){
@@ -108,7 +108,7 @@ ble_status_t ble_gatt_add_flags(ble_t * ble_p){
     return BLE_NO_ERROR;
 }
 
-ble_status_t ble_gatt_add_shortname(ble_t *ble_p, uint8_t * str, uint8_t len){
+ble_status_t ble_gap_add_shortname(ble_t *ble_p, uint8_t * str, uint8_t len){
 
     BLE_CHECK_AND_LOCK(ble_p);
 
@@ -131,6 +131,32 @@ ble_status_t ble_gatt_add_shortname(ble_t *ble_p, uint8_t * str, uint8_t len){
 
 }
 
+
+ble_status_t ble_gap_add_service_data_128(ble_t *ble_p, uint8_t * uuid, uint32_t data){
+
+    BLE_CHECK_AND_LOCK(ble_p);
+
+    if ( _ble_remaining_pdu(ble_p) < (  22 )) {
+        BLE_UNLOCK(ble_p);
+        return BLE_ERR_PDU_FULL;
+    }
+    ble_p->payload.buff[ ble_p->payload_length     ] = 20 + 1;
+    ble_p->payload.buff[ ble_p->payload_length + 1 ] = 0x21;//GAP_ADTYPE_SERVICE_DATA;
+
+    for (int i = 0; i < 16; i++) {
+        ble_p->payload.buff[ ble_p->payload_length + i + 2 ] = uuid[i];
+    }
+    ble_p->payload.buff[ ble_p->payload_length + 18 ] = data & 0x000000ff;
+    ble_p->payload.buff[ ble_p->payload_length + 19 ] = (data >> 8) & 0x000000ff;
+    ble_p->payload.buff[ ble_p->payload_length + 20 ] = (data >>16) & 0x000000ff;
+    ble_p->payload.buff[ ble_p->payload_length + 21 ] = (data >>24) & 0x000000ff;
+    ble_p->payload_length +=22;
+
+    BLE_UNLOCK(ble_p);
+
+    return BLE_NO_ERROR;
+
+}
 
 void ble_initialize( ble_t *ble_p ) {
 
