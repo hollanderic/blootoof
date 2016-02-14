@@ -128,7 +128,7 @@ typedef struct {
     ble_addr_type_t hw_addr_type;
     pdu_type_t      pdu_type;
     uint8_t         payload_length;
-    ble_payload_t   payload;
+    uint8_t         *payload;
 } ble_t;
 
 

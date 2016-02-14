@@ -57,8 +57,8 @@ static const char lkbeacon[] = "LK";
 
 void ble_start(void) {
 
-
-
+    printf("PACKET: ");
+    ble_dump_packet(&ble1);
 
 }
 
@@ -74,17 +74,12 @@ static int ble_run(void * args)
         ble_gap_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon));
         ble_gap_add_service_data_128(&ble1, uuid1, i++);
 
-   			//switch(ble1.state) {
-
-        		ble1.channel_index = 37;
-        		ble_radio_tx(&ble1);
-
-		    	ble1.channel_index = 38;
-        		ble_radio_tx(&ble1);
-
-		    	ble1.channel_index = 39;
-        		ble_radio_tx(&ble1);
-        	//}
+        ble1.channel_index = 37;
+        ble_radio_tx(&ble1);
+		ble1.channel_index = 38;
+        ble_radio_tx(&ble1);
+		ble1.channel_index = 39;
+        ble_radio_tx(&ble1);
 
 	    thread_sleep(1000);
 	}

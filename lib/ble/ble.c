@@ -65,12 +65,12 @@ ble_status_t ble_init_adv_nonconn_ind( ble_t *ble_p){
     //TODO - need to support random address as well
     ble_p->hw_addr_type = HW_ADDR_TYPE_PUBLIC;
 
-    ble_p->payload.buff[0] = ble_p->hw_addr[0];
-    ble_p->payload.buff[1] = ble_p->hw_addr[1];
-    ble_p->payload.buff[2] = ble_p->hw_addr[2];
-    ble_p->payload.buff[3] = ble_p->hw_addr[3];
-    ble_p->payload.buff[4] = ble_p->hw_addr[4];
-    ble_p->payload.buff[5] = ble_p->hw_addr[5];
+    ble_p->payload[0] = ble_p->hw_addr[0];
+    ble_p->payload[1] = ble_p->hw_addr[1];
+    ble_p->payload[2] = ble_p->hw_addr[2];
+    ble_p->payload[3] = ble_p->hw_addr[3];
+    ble_p->payload[4] = ble_p->hw_addr[4];
+    ble_p->payload[5] = ble_p->hw_addr[5];
 
     ble_p->payload_length = 6;
 
@@ -98,9 +98,9 @@ ble_status_t ble_gap_add_flags(ble_t * ble_p){
         BLE_UNLOCK(ble_p);
         return BLE_ERR_PDU_FULL;
     }
-    ble_p->payload.buff[ ble_p->payload_length     ] = 2;
-    ble_p->payload.buff[ ble_p->payload_length + 1 ] = GAP_ADTYPE_FLAGS;
-    ble_p->payload.buff[ ble_p->payload_length + 2 ] = 0x06;
+    ble_p->payload[ ble_p->payload_length     ] = 2;
+    ble_p->payload[ ble_p->payload_length + 1 ] = GAP_ADTYPE_FLAGS;
+    ble_p->payload[ ble_p->payload_length + 2 ] = 0x06;
     ble_p->payload_length +=3;
 
     BLE_UNLOCK(ble_p);
@@ -116,12 +116,12 @@ ble_status_t ble_gap_add_shortname(ble_t *ble_p, uint8_t * str, uint8_t len){
         BLE_UNLOCK(ble_p);
         return BLE_ERR_PDU_FULL;
     }
-    ble_p->payload.buff[ ble_p->payload_length     ] = len + 1;
-    ble_p->payload.buff[ ble_p->payload_length + 1 ] = GAP_ADTYPE_LOCAL_NAME_SHORT;
+    ble_p->payload[ ble_p->payload_length     ] = len + 1;
+    ble_p->payload[ ble_p->payload_length + 1 ] = GAP_ADTYPE_LOCAL_NAME_SHORT;
     ble_p->payload_length +=2;
 
     for (int i=0 ; i < len ; i++) {
-        ble_p->payload.buff[ ble_p->payload_length + i ] = str[i];
+        ble_p->payload[ ble_p->payload_length + i ] = str[i];
     }
     ble_p->payload_length += len;
 
@@ -140,17 +140,18 @@ ble_status_t ble_gap_add_service_data_128(ble_t *ble_p, uint8_t * uuid, uint32_t
         BLE_UNLOCK(ble_p);
         return BLE_ERR_PDU_FULL;
     }
-    ble_p->payload.buff[ ble_p->payload_length     ] = 20 + 1;
-    ble_p->payload.buff[ ble_p->payload_length + 1 ] = 0x21;//GAP_ADTYPE_SERVICE_DATA;
+    ble_p->payload[ ble_p->payload_length     ] = 20 + 1;
+    ble_p->payload[ ble_p->payload_length + 1 ] = 0x21;//GAP_ADTYPE_SERVICE_DATA;
 
     for (int i = 0; i < 16; i++) {
-        ble_p->payload.buff[ ble_p->payload_length + i + 2 ] = uuid[i];
+        ble_p->payload[ ble_p->payload_length + i + 2 ] = uuid[i];
     }
-    ble_p->payload.buff[ ble_p->payload_length + 18 ] = data & 0x000000ff;
-    ble_p->payload.buff[ ble_p->payload_length + 19 ] = (data >> 8) & 0x000000ff;
-    ble_p->payload.buff[ ble_p->payload_length + 20 ] = (data >>16) & 0x000000ff;
-    ble_p->payload.buff[ ble_p->payload_length + 21 ] = (data >>24) & 0x000000ff;
-    ble_p->payload_length +=22;
+    ble_p->payload[ ble_p->payload_length + 18 ] = data & 0x000000ff;
+    ble_p->payload[ ble_p->payload_length + 19 ] = (data >> 8) & 0x000000ff;
+    ble_p->payload[ ble_p->payload_length + 20 ] = (data >>16) & 0x000000ff;
+    ble_p->payload[ ble_p->payload_length + 21 ] = (data >>24) & 0x000000ff;
+    
+    ble_p->payload_length += 22;
 
     BLE_UNLOCK(ble_p);
 
@@ -180,9 +181,9 @@ void ble_dump_packet(ble_t *ble_p){
 
     uint16_t pdu_header = ( 0x55 << 8) + ble_p->payload_length;
 
-    printf(" %08x - %04x -", ble_p->access_address, pdu_header);
+    printf("%02x --- %02x ---",ble_p->payload[-2], ble_p->payload[-1]);
     for (int i = 0; i < ble_p->payload_length ; i++)
-        printf("%02x", ble_p->payload.buff[i]);
+        printf("%02x", ble_p->payload[i]);
     printf("\n");
 
 }
