@@ -122,6 +122,7 @@ typedef struct {
     event_t         *radio_event;
     ble_state_t     state;
     uint32_t        interval;
+    bool            scannable;
     uint8_t         channel_index;      //Might want to eliminate
     uint32_t        access_address;     //Might want to eliminate
     uint8_t         hw_addr[6];

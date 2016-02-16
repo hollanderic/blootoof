@@ -155,6 +155,15 @@ void ble_radio_tx(ble_t * ble_p){
     gpio_set(GPIO_LED1,0);
     NRF_RADIO->TASKS_TXEN       =   1;
     event_wait_timeout(ble_p->radio_event, 2000);  //todo, check for timeout and bomb.
+ /*   if (ble_p->scannable) {
+        // set up the receive
+        NRF_RADIO->EVENTS_DISABLED  =   0;
+        NRF_RADIO->INTENSET         =   RADIO_INTENSET_DISABLED_Enabled << RADIO_INTENSET_DISABLED_Pos;
+    
+        NRF_RADIO->PACKETPTR    =   (uint32_t)&nrf_rx_buffer;
+        NRF_RADIO->TASKS_RXEN   =   1;
+
+    }*/
 }
 
 void ble_radio_start_rx(ble_t * ble_p){

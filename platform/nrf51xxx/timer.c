@@ -34,6 +34,8 @@
 static volatile uint64_t ticks;
 static uint32_t tick_rate = 0;
 static uint32_t tick_rate_mhz = 0;
+static uint32_t tick_increment_us;
+static uint32_t tick_increment;
 static lk_time_t tick_interval_ms;
 
 static platform_timer_callback cb;
@@ -49,15 +51,21 @@ status_t platform_set_periodic_timer(platform_timer_callback callback, void *arg
 
     tick_interval_ms = interval;
 
-    uint32_t ticks = tick_rate / ( 1000 / interval );
+    tick_increment = tick_rate / ( 1000 / interval );
+    tick_increment_us = tick_increment*1000000/tick_rate;
 
     NRF_CLOCK->LFCLKSRC =  CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
     NRF_CLOCK->TASKS_LFCLKSTART = 1;
 
-    NRF_RTC1->PRESCALER = ticks;
-    NRF_RTC1->INTENSET  = RTC_INTENSET_TICK_Enabled << RTC_INTENSET_TICK_Pos;
+    NRF_RTC1->TASKS_STOP = 1;
+    NRF_RTC1->TASKS_CLEAR = 1;
 
-    NRF_RTC1->EVENTS_TICK = 0;
+    NRF_RTC1->PRESCALER = 0;
+    NRF_RTC1->CC[0] = tick_increment;
+
+    NRF_RTC1->INTENSET  = RTC_INTENSET_COMPARE0_Enabled << RTC_INTENSET_COMPARE0_Pos;
+
+    NRF_RTC1->EVENTS_COMPARE[0] = 0;
     NRF_RTC1->TASKS_START = 1;
     NVIC_EnableIRQ(RTC1_IRQn);
 
@@ -72,20 +80,20 @@ lk_time_t current_time(void)
         t = ticks;
     } while (ticks != t);
 
-    return t * tick_interval_ms;
+    return t / 1000;
 }
 
 lk_bigtime_t current_time_hires(void)
 {
-    return current_time() * 1000;
+    return ticks;
 }
 
 void nrf51_RTC1_IRQ(void)
 {
-    ticks++;
+    ticks += tick_increment_us;
     arm_cm_irq_entry();
-
-    NRF_RTC1->EVENTS_TICK = 0;
+    NRF_RTC1->EVENTS_COMPARE[0] = 0;
+    NRF_RTC1->CC[0] += tick_increment;
 
     bool resched = false;
     if (cb) {

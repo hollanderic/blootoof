@@ -50,10 +50,10 @@ STATIC_COMMAND_END(bletests);
 
 #endif
 
-
 static ble_t ble1;
 static thread_t *blethread;
 static const char lkbeacon[] = "LK";
+
 
 void ble_start(void) {
 
@@ -73,7 +73,9 @@ static int ble_run(void * args)
         ble_gap_add_flags(&ble1);
         ble_gap_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon));
         ble_gap_add_service_data_128(&ble1, uuid1, i++);
-
+//TODO - need a way to timeout the rx after tx when we don't get a scan request.  
+//          if we accept connections or scans, we should do shortcut to enable rx after
+//          we disable on tx.
         ble1.channel_index = 37;
         ble_radio_tx(&ble1);
 		ble1.channel_index = 38;
