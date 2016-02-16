@@ -44,7 +44,7 @@ int32_t ble_radio_set_channel(ble_t * ble_p, uint8_t channel);
 
 
 
-void ble_radio_tx(ble_t * ble_p);
+uint32_t ble_radio_tx(ble_t * ble_p);
 
 
 

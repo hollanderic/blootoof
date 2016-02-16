@@ -23,6 +23,7 @@
 #include <err.h>
 #include <debug.h>
 #include <trace.h>
+#include <kernel/event.h>
 #include <arch/arm/cm.h>
 #include <platform.h>
 #include <platform/nrf51.h>
@@ -41,6 +42,8 @@ static lk_time_t tick_interval_ms;
 static platform_timer_callback cb;
 static void *cb_args;
 
+static event_t * cc1_event_p;
+
 typedef enum handler_return (*platform_timer_callback)(void *arg, lk_time_t now);
 
 status_t platform_set_periodic_timer(platform_timer_callback callback, void *arg, lk_time_t interval)
@@ -48,6 +51,8 @@ status_t platform_set_periodic_timer(platform_timer_callback callback, void *arg
 
     cb = callback;
     cb_args = arg;
+
+    cc1_event_p = NULL;
 
     tick_interval_ms = interval;
 
@@ -88,18 +93,37 @@ lk_bigtime_t current_time_hires(void)
     return ticks;
 }
 
+void nrf_evt_timeout( event_t * event_p, uint32_t delay_ticks) {
+    
+    cc1_event_p = event_p;
+    NRF_RTC1->CC[1] = NRF_RTC1->COUNTER + delay_ticks;
+    NRF_RTC1->EVENTS_COMPARE[1] = 0;
+    NRF_RTC1->INTENSET  = RTC_INTENSET_COMPARE1_Enabled << RTC_INTENSET_COMPARE1_Pos;
+   
+}
+
+
 void nrf51_RTC1_IRQ(void)
 {
     ticks += tick_increment_us;
     arm_cm_irq_entry();
-    NRF_RTC1->EVENTS_COMPARE[0] = 0;
-    NRF_RTC1->CC[0] += tick_increment;
-
     bool resched = false;
-    if (cb) {
-        lk_time_t now = current_time();
-        if (cb(cb_args, now) == INT_RESCHEDULE)
-            resched = true;
+
+    if (NRF_RTC1->EVENTS_COMPARE[0] == 1 ) {
+        NRF_RTC1->EVENTS_COMPARE[0] = 0;
+        NRF_RTC1->CC[0] += tick_increment;
+
+        if (cb) {
+            lk_time_t now = current_time();
+            if (cb(cb_args, now) == INT_RESCHEDULE)
+                resched = true;
+        }
+    }
+    if ((NRF_RTC1->EVENTS_COMPARE[1] == 1) && (NRF_RTC1->INTENSET & RTC_INTENSET_COMPARE1_Msk)) {
+        NRF_RTC1->EVENTS_COMPARE[1] = 0;
+        NRF_RTC1->INTENCLR  = RTC_INTENSET_COMPARE1_Msk;
+        event_signal(cc1_event_p,false);
+        resched = true;
     }
     arm_cm_irq_exit(resched);
 }

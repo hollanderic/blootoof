@@ -44,23 +44,44 @@
 static uint8_t nrf_tx_buffer[64];
 static uint8_t nrf_rx_buffer[64];
 
-static event_t radio_evt;
+static event_t radio_end_evt;
+static event_t radio_disabled_evt;
+
+void nrf_evt_timeout( event_t * event_p, uint32_t delay_ticks);
+void ble_radio_start_rx(ble_t * ble_p);
 
 
 void nrf51_RADIO_IRQ (void) {
 
     arm_cm_irq_entry();
+    if ((NRF_RADIO->INTENSET & RADIO_INTENSET_END_Msk ) && NRF_RADIO->EVENTS_END ) {
+        NRF_RADIO->EVENTS_END = 0;
+        event_signal(&radio_end_evt, false);
+        gpio_set(GPIO_LED1,1);
 
-    NRF_RADIO->EVENTS_DISABLED = 0;
+    }
 
-    event_signal(&radio_evt, false);
+    if ((NRF_RADIO->INTENSET & RADIO_INTENSET_DISABLED_Msk ) && NRF_RADIO->EVENTS_DISABLED ) {
+        NRF_RADIO->EVENTS_DISABLED = 0;
+        event_signal(&radio_disabled_evt, false);
+    }
 
-    gpio_set(GPIO_LED1,1);
 
     arm_cm_irq_exit(true);
 }
-
-
+/*
+ *  gracefully waits for radio to enter disabled state, which is the starting point for 
+ *      any radio activity when swtiching between rx and tx mode
+ */
+static inline uint32_t _wait_radio_disabled(void) {
+    if (NRF_RADIO->STATE != RADIO_STATE_STATE_Disabled) {       // Only yield the thread if we need to
+        NRF_RADIO->TASKS_DISABLE = 1;       // Just to be safe, hit the stop button
+        event_wait_timeout(&radio_disabled_evt,10);
+        return 0;
+    }
+    event_unsignal(&radio_disabled_evt); // Unsignal the event in case we had a race
+    return 0;
+}
 /*
     Initialize the radio to ble mode, place in idle.
     This will perform necessary checks to ensure configuration
@@ -69,9 +90,8 @@ void nrf51_RADIO_IRQ (void) {
 */
 void ble_radio_initialize(ble_t *ble_p) {
 
-    event_init(&radio_evt,false, EVENT_FLAG_AUTOUNSIGNAL);
-
-    ble_p->radio_event = &radio_evt;
+    event_init(&radio_end_evt,false, EVENT_FLAG_AUTOUNSIGNAL);
+    event_init(&radio_disabled_evt, false, EVENT_FLAG_AUTOUNSIGNAL);
 
     NRF_CLOCK->TASKS_HFCLKSTART = 1;    //Start HF xtal oscillator (required for radio)
 
@@ -108,8 +128,9 @@ void ble_radio_initialize(ble_t *ble_p) {
 
     ble_p->payload          =   &(nrf_tx_buffer[2]);  //skip the header, may need to change this later and factor into gap commands
 
-    NRF_RADIO->EVENTS_DISABLED  =   0;
-    NRF_RADIO->INTENSET         =   RADIO_INTENSET_DISABLED_Enabled << RADIO_INTENSET_DISABLED_Pos;
+    NRF_RADIO->EVENTS_END   =   0;
+    NRF_RADIO->INTENSET     =   RADIO_INTENSET_END_Enabled << RADIO_INTENSET_END_Pos | \
+                                RADIO_INTENSET_DISABLED_Enabled << RADIO_INTENSET_DISABLED_Pos;
 
     NRF_RADIO->SHORTS       =   RADIO_SHORTS_READY_START_Enabled << RADIO_SHORTS_READY_START_Pos | \
                                 RADIO_SHORTS_END_DISABLE_Enabled << RADIO_SHORTS_END_DISABLE_Pos;
@@ -123,7 +144,7 @@ void ble_radio_initialize(ble_t *ble_p) {
         This includes channel, whitening init, length fields, etc.
         Assumes that the payload is already laid out in RAM buffer.
 */
-void ble_radio_tx(ble_t * ble_p){
+uint32_t ble_radio_tx(ble_t * ble_p){
     //TODO - check channel range
     //TODO - check payload length
 
@@ -132,6 +153,8 @@ void ble_radio_tx(ble_t * ble_p){
             nrf_tx_buffer[0] |= 0x40;
 
     nrf_tx_buffer[1]        = ble_p->payload_length;
+
+    _wait_radio_disabled();
 
     NRF_RADIO->PACKETPTR    =   (uint32_t )&nrf_tx_buffer;
     NRF_RADIO->DATAWHITEIV  =   ble_p->channel_index;
@@ -154,20 +177,38 @@ void ble_radio_tx(ble_t * ble_p){
 
     gpio_set(GPIO_LED1,0);
     NRF_RADIO->TASKS_TXEN       =   1;
-    event_wait_timeout(ble_p->radio_event, 2000);  //todo, check for timeout and bomb.
- /*   if (ble_p->scannable) {
+    event_wait_timeout(&radio_end_evt, 10);  //todo, check for timeout and bomb. TODO- really need to make this tickless
+    if ((ble_p->scannable) ) {
         // set up the receive
-        NRF_RADIO->EVENTS_DISABLED  =   0;
-        NRF_RADIO->INTENSET         =   RADIO_INTENSET_DISABLED_Enabled << RADIO_INTENSET_DISABLED_Pos;
-    
-        NRF_RADIO->PACKETPTR    =   (uint32_t)&nrf_rx_buffer;
-        NRF_RADIO->TASKS_RXEN   =   1;
+        ble_radio_start_rx(ble_p);
 
-    }*/
+
+    }
+    return 0;
 }
 
 void ble_radio_start_rx(ble_t * ble_p){
+    uint32_t d0, d1;
+    _wait_radio_disabled();
+    //nrf_evt_timeout(&radio_end_evt,20);
+    NRF_RADIO->PACKETPTR    =   (uint32_t)&nrf_rx_buffer;
+    NRF_RADIO->TASKS_RXEN   =   1;  
+    d0=NRF_RTC1->COUNTER;
+    uint32_t i = event_wait_timeout(&radio_end_evt,20);
+    d1=NRF_RTC1->COUNTER;
+    printf("delta = %d\n",d1-d0);
 
+        //if (i==0) { printf("Returned on end event\n");}
+    if (NRF_RADIO->STATE == RADIO_STATE_STATE_Rx ) { //we didn't get anything
+        NRF_RADIO->TASKS_DISABLE = 1;   // shut down radio
+        //printf("got nothing\n");
+    } else {
+        for (int i = 0 ; i < 15 ; i++) {
+            printf("%02X ",nrf_rx_buffer[i]);
+        }
+        printf("\n");
+    }
+    return 0;
 
 }
 

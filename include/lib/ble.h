@@ -119,7 +119,6 @@ typedef union {
 typedef struct {
     thread_t        *ble_thread;
     mutex_t         lock;
-    event_t         *radio_event;
     ble_state_t     state;
     uint32_t        interval;
     bool            scannable;
@@ -130,6 +129,7 @@ typedef struct {
     pdu_type_t      pdu_type;
     uint8_t         payload_length;
     uint8_t         *payload;
+    uint8_t         *scan_response;
 } ble_t;
 
 

@@ -68,11 +68,13 @@ static int ble_run(void * args)
     ble_initialize( &ble1 );
 
     while (1) {
+        printf("start...\n");
         //if ( mutex_acquire_timeout(&(ble_p->lock),0) == NO_ERROR )
         ble_init_adv_nonconn_ind(&ble1);
         ble_gap_add_flags(&ble1);
         ble_gap_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon));
         ble_gap_add_service_data_128(&ble1, uuid1, i++);
+        ble1.scannable = true;
 //TODO - need a way to timeout the rx after tx when we don't get a scan request.  
 //          if we accept connections or scans, we should do shortcut to enable rx after
 //          we disable on tx.
