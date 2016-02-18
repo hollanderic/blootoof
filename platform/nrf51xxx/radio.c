@@ -47,6 +47,8 @@ static uint8_t nrf_rx_buffer[64];
 static event_t radio_end_evt;
 static event_t radio_disabled_evt;
 
+static uint32_t testvar;
+
 void nrf_evt_timeout( event_t * event_p, uint32_t delay_ticks);
 void ble_radio_start_rx(ble_t * ble_p);
 
@@ -64,6 +66,7 @@ void nrf51_RADIO_IRQ (void) {
     if ((NRF_RADIO->INTENSET & RADIO_INTENSET_DISABLED_Msk ) && NRF_RADIO->EVENTS_DISABLED ) {
         NRF_RADIO->EVENTS_DISABLED = 0;
         event_signal(&radio_disabled_evt, false);
+        testvar=NRF_RTC1->COUNTER;
     }
 
 
@@ -134,6 +137,9 @@ void ble_radio_initialize(ble_t *ble_p) {
 
     NRF_RADIO->SHORTS       =   RADIO_SHORTS_READY_START_Enabled << RADIO_SHORTS_READY_START_Pos | \
                                 RADIO_SHORTS_END_DISABLE_Enabled << RADIO_SHORTS_END_DISABLE_Pos;
+    
+    NRF_RADIO->RXADDRESSES = 1UL;
+    NRF_RADIO->TXADDRESS = 0UL;
 
     NVIC_ClearPendingIRQ(RADIO_IRQn);
     NVIC_EnableIRQ(RADIO_IRQn);
@@ -190,20 +196,15 @@ uint32_t ble_radio_tx(ble_t * ble_p){
 void ble_radio_start_rx(ble_t * ble_p){
     uint32_t d0, d1;
     _wait_radio_disabled();
-    //nrf_evt_timeout(&radio_end_evt,20);
+    nrf_evt_timeout(&radio_end_evt,50);
     NRF_RADIO->PACKETPTR    =   (uint32_t)&nrf_rx_buffer;
     NRF_RADIO->TASKS_RXEN   =   1;  
-    d0=NRF_RTC1->COUNTER;
-    uint32_t i = event_wait_timeout(&radio_end_evt,20);
-    d1=NRF_RTC1->COUNTER;
-    printf("delta = %d\n",d1-d0);
+    uint32_t i = event_wait_timeout(&radio_end_evt,4000);
 
-        //if (i==0) { printf("Returned on end event\n");}
     if (NRF_RADIO->STATE == RADIO_STATE_STATE_Rx ) { //we didn't get anything
         NRF_RADIO->TASKS_DISABLE = 1;   // shut down radio
-        //printf("got nothing\n");
     } else {
-        for (int i = 0 ; i < 15 ; i++) {
+        for (int i = 0 ; i < (nrf_rx_buffer[1]+2) ; i++) {
             printf("%02X ",nrf_rx_buffer[i]);
         }
         printf("\n");
