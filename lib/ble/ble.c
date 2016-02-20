@@ -53,6 +53,8 @@ static int _ble_run(void *arg){
 	return 0;
 }
 
+
+
 /*
     Sets up state for ADV_NONCONN_IND advertising.
 */
@@ -88,7 +90,12 @@ uint8_t _ble_remaining_pdu(ble_t *ble_p) {
 
 ble_status_t ble_go_idle(ble_t *ble_p){
 
-    return BLE_NO_ERROR;
+    uint32_t status;
+
+    status = ble_radio_shutdown();
+    ble_p->state = BLE_IDLE;
+
+    return status;
 }
 
 ble_status_t ble_gap_add_flags(ble_t * ble_p){
@@ -165,16 +172,12 @@ void ble_initialize( ble_t *ble_p ) {
     ble_p->access_address   = BLE_ACCESSADDRESS_ADVERTISING;
     ble_p->pdu_type         = PDU_ADV_NONCONN_IND;
     ble_p->payload_length = 0;
+    ble_p->state = BLE_IDLE;
 
     ble_radio_initialize( ble_p );
 
     ble_get_hw_addr( ble_p );
 
-	//ble_p->ble_thread = thread_create( "BLE thread", &_ble_run, ble_p, DEFAULT_PRIORITY, DEFAULT_STACK_SIZE );
-
-
-
-    //thread_detach_and_resume(ble_p->ble_thread);
 }
 
 

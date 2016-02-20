@@ -78,6 +78,10 @@ void nrf51_RADIO_IRQ (void) {
     //gpio_set(GPIO_LED1,1);
     arm_cm_irq_exit(true);
 }
+
+
+
+
 /*
  *  gracefully waits for radio to enter disabled state, which is the starting point for
  *      any radio activity when swtiching between rx and tx mode
@@ -91,6 +95,11 @@ static inline uint32_t _wait_radio_disabled(void) {
     event_unsignal(&radio_disabled_evt); // Unsignal the event in case we had a race
     return 0;
 }
+
+uint32_t ble_radio_shutdown(void){
+    return _wait_radio_disabled();
+}
+
 /*
     Initialize the radio to ble mode, place in idle.
     This will perform necessary checks to ensure configuration
@@ -209,7 +218,7 @@ uint32_t ble_radio_tx(ble_t * ble_p){
     Moves to the next rx buffer in sequence and sets packetptr;
 */
 static inline void _ble_radio_increment_rx_buffer(void) {
-    curr_rx_buff = (curr_rx_buff +1) % (NUM_RX_BUFFERS -1 );
+    curr_rx_buff = (curr_rx_buff +1) % (NUM_RX_BUFFERS);
     NRF_RADIO->PACKETPTR = (uint32_t)nrf_rx_buffer + curr_rx_buff*RX_BUFFER_LENGTH;
 }
 
@@ -254,9 +263,7 @@ uint32_t ble_radio_scan_continuous(ble_t * ble_p, lk_time_t timeout){
         _ble_radio_pre_init(ble_p);
         NRF_RADIO->TASKS_RXEN = 1;
     }
-    gpio_set(GPIO_LED1,0);
     retval = event_wait_timeout(&radio_end_evt, timeout);
-    gpio_set(GPIO_LED1,1);
     if (retval != 0) {
         ble_p->payload = NULL;
         ble_p->payload_length = 0;

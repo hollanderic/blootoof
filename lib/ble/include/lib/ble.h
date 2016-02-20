@@ -70,7 +70,9 @@ typedef enum {
 typedef enum {
 
     BLE_IDLE,
+    BLE_START_ADVERTISING,
     BLE_ADVERTISING,
+    BLE_START_SCANNING,
     BLE_SCANNING,
     BLE_CONNECTED,
 

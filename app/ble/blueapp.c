@@ -29,6 +29,9 @@
 #include <lib/ble.h>
 #include <platform/nrf51.h>
 #include <platform/nrf51_radio.h>
+#include <platform.h>
+#include <platform/timer.h>
+
 #include <dev/ble_radio.h>
 
 #include <target/gpioconfig.h>
@@ -41,83 +44,92 @@
                             0x59, 0x4f, 0x1a, 0x18, \
                             0xbe, 0x23, 0x02, 0x08 };
 
-void ble_start(void);
-static void ble_init(const struct app_descriptor *app);
-uint32_t ble_radio_scan_continuous(ble_t * ble_p, lk_time_t timeout);
-
-#if defined(WITH_LIB_CONSOLE)
-#include <lib/console.h>
-
-STATIC_COMMAND_START
-STATIC_COMMAND("ble_tests", "test ble", (console_cmd)&ble_start)
-STATIC_COMMAND_END(bletests);
-
-#endif
 
 static ble_t ble1;
 static thread_t *blethread;
 static const char lkbeacon[] = "LK";
 
 
-void ble_start(void) {
+void ble_scan(void);
+static void ble_init(const struct app_descriptor *app);
+uint32_t ble_radio_scan_continuous(ble_t * ble_p, lk_time_t timeout);
 
-    printf("PACKET: ");
-    ble_dump_packet(&ble1);
+void ble_stop(void) {
+    ble_go_idle(&ble1);
 
+}
+
+
+#if defined(WITH_LIB_CONSOLE)
+#include <lib/console.h>
+
+STATIC_COMMAND_START
+STATIC_COMMAND("ble-scan", "Start BLE Scanning", (console_cmd)&ble_scan)
+STATIC_COMMAND("ble-stop", "Stop BLE Activity", (console_cmd)&ble_stop)
+STATIC_COMMAND_END(bletests);
+
+#endif
+
+
+
+
+void ble_scan(void) {
+    printf("Starting BLE Scanning...\n");
+    ble1.state = BLE_START_SCANNING;
 }
 
 static int ble_run(void * args)
 {
     int32_t i =0;
     ble_initialize( &ble1 );
+    while(1) {
+        switch (ble1.state) {
+            case BLE_START_SCANNING:
+            case BLE_SCANNING:
 
-    while (1) {
-        ble1.channel_index = 39;
-        i =  ble_radio_scan_continuous(&ble1,3000);
-        if ((i==0) && (ble1.payload)) {
-            for (int x=0; x < ble1.payload_length; x++) {
-                        //gpio_set(GPIO_LED1,0);
+                ble1.channel_index = 39;
+                i =  ble_radio_scan_continuous(&ble1,3000);
+                if ((i==0) && (ble1.payload)) {
+                    printf("%llu: ",current_time_hires());
+                    for (int x=0; x < ble1.payload_length; x++) {
+                        printf("%02x",ble1.payload[x]);
+                    }
+                    printf("\n");
+                 } else {
+                    printf("timed out -%x\n",(uint32_t)ble1.payload);
+                 }
+                 break;
+            case BLE_START_ADVERTISING:
+            case BLE_ADVERTISING:
 
-
-                printf("%02x ",ble1.payload[x]);
-                //gpio_set(GPIO_LED1,1);
-
-            }
-            printf("\n");
-         } else {
-            printf("timed out -%x\n",(uint32_t)ble1.payload);
-         }
-
-
-
+                ble_init_adv_nonconn_ind(&ble1);
+                ble_gap_add_flags(&ble1);
+                ble_gap_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon)-1);
+                //ble_gap_add_service_data_128(&ble1, uuid1, i++);
+                ble1.scannable = true;
+        //TODO - need a way to timeout the rx after tx when we don't get a scan request.
+        //          if we accept connections or scans, we should do shortcut to enable rx after
+        //          we disable on tx.
+                ble1.channel_index = 37;
+                ble_radio_tx(&ble1);
+                ble1.channel_index = 38;
+                ble_radio_tx(&ble1);
+                ble1.channel_index = 39;
+                ble_radio_tx(&ble1);
+                thread_sleep(1000);
+                break;
+            default:
+                thread_sleep(1000);
+                break;
+                //thread_yield();
+        }
     }
-
-    while (1) {
-        //printf("start...\n");
-        //if ( mutex_acquire_timeout(&(ble_p->lock),0) == NO_ERROR )
-        ble_init_adv_nonconn_ind(&ble1);
-        ble_gap_add_flags(&ble1);
-        ble_gap_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon)-1);
-        //ble_gap_add_service_data_128(&ble1, uuid1, i++);
-        ble1.scannable = true;
-//TODO - need a way to timeout the rx after tx when we don't get a scan request.
-//          if we accept connections or scans, we should do shortcut to enable rx after
-//          we disable on tx.
-        ble1.channel_index = 37;
-        ble_radio_tx(&ble1);
-		ble1.channel_index = 38;
-        ble_radio_tx(&ble1);
-		ble1.channel_index = 39;
-        ble_radio_tx(&ble1);
-
-	    thread_sleep(1000);
-	}
 	return 0;
 }
 
 
 static void ble_init(const struct app_descriptor *app) {
-
+    
 	blethread = thread_create("blethread", &ble_run, NULL, HIGH_PRIORITY, DEFAULT_STACK_SIZE);
 	thread_resume(blethread);
 }
