@@ -188,7 +188,7 @@ ble_status_t ble_go_idle(ble_t *ble_p);
 #define BLE_CRC_INITIAL_ADV                 0x555555
 
 
-#define GAP_ADTYPE_FLAGS                        0x01
+#define GAP_ADTYPE_FLAGS                        0x01 // device flags
 #define GAP_ADTYPE_16BIT_MORE                   0x02
 #define GAP_ADTYPE_16BIT_COMPLETE               0x03
 #define GAP_ADTYPE_32BIT_MORE                   0x04
@@ -209,7 +209,7 @@ ble_status_t ble_go_idle(ble_t *ble_p);
 #define GAP_ADTYPE_SERVICES_LIST_128BIT         0x15
 #define GAP_ADTYPE_SERVICE_DATA                 0x16
 #define GAP_ADTYPE_APPEARANCE                   0x19
-#define GAP_ADTYPE_MANUFACTURER_SPECIFIC        0xFF
+#define GAP_ADTYPE_MANUFACTURER_SPECIFIC        0xFF // proprietary packets
 
 
 

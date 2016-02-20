@@ -23,7 +23,6 @@
 
 static void _ble_print_gap_fields(ble_t * ble_p, uint32_t index);
 
-
 static inline void _print_hw_addr(uint8_t * buff_p){
 	printf("%02x:%02x:%02x:%02x:%02x:%02x",  buff_p[5], \
  											 buff_p[4], buff_p[3], \
@@ -34,6 +33,11 @@ static inline void _print_hw_addr(uint8_t * buff_p){
 static inline void _hexdump(uint8_t * buff, uint8_t len) {
 	for (int i=0; i < len ; i++) {
 		printf("%02x",buff[i]);
+	}
+}
+static inline void _chardump(uint8_t * buff, uint8_t len) {
+	for (int i=0; i < len ; i++) {
+		printf("%c",buff[i]);
 	}
 }
 
@@ -73,10 +77,32 @@ void ble_print_packet(ble_t * ble_p) {
 
  }
 
+static inline uint32_t _ble_print_gadname(ble_t * ble_p, uint8_t index) {
+	
+	printf("\tGAP_ADTYPE_LOCAL_NAME_COMPLETE : ");
+	_chardump( &ble_p->payload[index+2] , ble_p->payload[index]-1);
+	printf("\n");
+	return ble_p->payload[index] +1;
+
+}
+
+static inline uint32_t _ble_print_gadnameshort(ble_t * ble_p, uint8_t index) {
+
+	printf("\tGAP_ADTYPE_LOCAL_NAME_SHORT : ");
+	_chardump( &ble_p->payload[index+2] , ble_p->payload[index]-1);
+	printf("\n");
+	return ble_p->payload[index] +1;
+}
+
+static inline uint32_t _ble_print_gadtxpower(ble_t * ble_p, uint8_t index) {
+	if ( ble_p->payload[index] != 2) 
+		return 255;  //corrupt if len!=2
+	printf("\tGAP_ADTYPE_POWER_LEVEL: %d dBm\n" , (int8_t)ble_p->payload[index+2] );
+	return 3;
+
+}
 static inline uint32_t _ble_print_gadms(ble_t * ble_p, uint8_t index) {
-	
-	if ((index + ble_p->payload[index]) > ble_p->payload_length + 2) return 255;
-	
+		
 	printf("\tGAP_ADTYPE_MANUFACTURER_SPECIFIC (%d bytes):" , ble_p->payload[index] );
 	_hexdump(&(ble_p->payload[index + 2]),ble_p->payload[index]);
 	printf("\n");
@@ -98,25 +124,37 @@ static inline uint32_t _ble_print_gadflags(ble_t * ble_p, uint8_t index) {
 
 static void _ble_print_gap_fields(ble_t * ble_p, uint32_t index) {
 
-
 	while (index < ble_p->payload_length) {
-		switch (ble_p->payload[index + 1]) {
-			case GAP_ADTYPE_MANUFACTURER_SPECIFIC:
-				index = index + _ble_print_gadms(ble_p,index);
-				break;
-			case GAP_ADTYPE_FLAGS:
-				index = index + _ble_print_gadflags(ble_p,index);
-				break;
+		if ((index + ble_p->payload[index]) > ble_p->payload_length + 2) {
+			index=256;
+		} else {
+			switch (ble_p->payload[index + 1]) {
+				case GAP_ADTYPE_MANUFACTURER_SPECIFIC:
+					index = index + _ble_print_gadms(ble_p,index);
+					break;
+				case GAP_ADTYPE_FLAGS:
+					index = index + _ble_print_gadflags(ble_p,index);
+					break;
+				case GAP_ADTYPE_LOCAL_NAME_SHORT:
+					index = index + _ble_print_gadnameshort(ble_p,index);
+					break;
+				case GAP_ADTYPE_LOCAL_NAME_COMPLETE:
+					index = index + _ble_print_gadname(ble_p,index);
+					break;
+				case GAP_ADTYPE_POWER_LEVEL:
+					index = index + _ble_print_gadtxpower(ble_p,index);
+					break;
 
-			default:
-				printf("\tunhandled type: ");
-				for (int i=0; i<(ble_p->payload[index] +1 ) ; i++) {
-					printf("%02x",ble_p->payload[index+i]);
-				}
-				printf("\n");
-				index = index + ble_p->payload[index] + 1;
+				default:
+					printf("\tunhandled type: ");
+					for (int i=0; i<(ble_p->payload[index] +1 ) ; i++) {
+						printf("%02x",ble_p->payload[index+i]);
+					}
+					printf("\n");
+					index = index + ble_p->payload[index] + 1;
+			}
 		}
-		if (index > 255)
+		if (index > 255)  // bit hacky error catch here, but ble buffers are always going to be much smaller
 			printf("CORRUPT PACKET!\n");
 
 
