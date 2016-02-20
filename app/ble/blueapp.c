@@ -50,13 +50,18 @@ static thread_t *blethread;
 static const char lkbeacon[] = "LK";
 
 
-void ble_scan(void);
 static void ble_init(const struct app_descriptor *app);
 uint32_t ble_radio_scan_continuous(ble_t * ble_p, lk_time_t timeout);
 
 void ble_stop(void) {
     ble_go_idle(&ble1);
 
+}
+
+
+void ble_scan(void) {
+    printf("Starting BLE Scanning...\n");
+    ble1.state = BLE_START_SCANNING;
 }
 
 
@@ -71,12 +76,6 @@ STATIC_COMMAND_END(bletests);
 #endif
 
 
-
-
-void ble_scan(void) {
-    printf("Starting BLE Scanning...\n");
-    ble1.state = BLE_START_SCANNING;
-}
 
 static int ble_run(void * args)
 {
