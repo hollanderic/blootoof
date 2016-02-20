@@ -4,6 +4,7 @@ MODULE := $(LOCAL_DIR)
 
 MODULE_SRCS += \
     $(LOCAL_DIR)/blueapp.c \
+	$(LOCAL_DIR)/ble_print.c \
 
 MODULE_ARM_OVERRIDE_SRCS := \
 

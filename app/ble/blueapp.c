@@ -36,6 +36,7 @@
 
 #include <target/gpioconfig.h>
 #include <dev/gpio.h>
+#include <app/ble_print.h>
 
 
 //   UUID  - 080223be-181a-4f59-b74a-ea5d04af35bc
@@ -53,11 +54,17 @@ static const char lkbeacon[] = "LK";
 static void ble_init(const struct app_descriptor *app);
 uint32_t ble_radio_scan_continuous(ble_t * ble_p, lk_time_t timeout);
 
+//TODO - state switching isn't threadsafe at moment
+//TODO - prettyprinting for packet info
+//TODO - RSSI Measurements and CRC Checking + statistics
+//TODO - Stub for starting advertising
+//TODO - Stub for checking statistics
+//TODO - Can we stop scanning with a keypress instead of typing out statement?
+
 void ble_stop(void) {
     ble_go_idle(&ble1);
 
 }
-
 
 void ble_scan(void) {
     printf("Starting BLE Scanning...\n");
@@ -81,6 +88,7 @@ static int ble_run(void * args)
 {
     int32_t i =0;
     ble_initialize( &ble1 );
+    ble1.state = BLE_START_SCANNING;
     while(1) {
         switch (ble1.state) {
             case BLE_START_SCANNING:
@@ -89,11 +97,12 @@ static int ble_run(void * args)
                 ble1.channel_index = 39;
                 i =  ble_radio_scan_continuous(&ble1,3000);
                 if ((i==0) && (ble1.payload)) {
-                    printf("%llu: ",current_time_hires());
+                    /*printf("%llu: ",current_time_hires());
                     for (int x=0; x < ble1.payload_length; x++) {
                         printf("%02x",ble1.payload[x]);
                     }
-                    printf("\n");
+                    printf("\n");*/
+                    ble_print_packet(&ble1);
                  } else {
                     printf("timed out -%x\n",(uint32_t)ble1.payload);
                  }

@@ -227,7 +227,8 @@ static inline void _ble_radio_increment_rx_buffer(void) {
 */
 static inline void _ble_get_current_rx_buffer(ble_t * ble_p){
     ble_p->payload = &nrf_rx_buffer[ curr_rx_buff * RX_BUFFER_LENGTH ];
-    ble_p->payload_length = ble_p->payload[1] % RX_BUFFER_LENGTH;
+    ble_p->payload_length = ble_p->payload[1] % (RX_BUFFER_LENGTH -2); //length field doesn't include PDU header
+    ble_p->payload[1] = ble_p->payload_length;  //Keep bad length field from allowing a buffer overrun up the stack
 }
 
 
