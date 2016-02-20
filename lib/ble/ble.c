@@ -150,7 +150,7 @@ ble_status_t ble_gap_add_service_data_128(ble_t *ble_p, uint8_t * uuid, uint32_t
     ble_p->payload[ ble_p->payload_length + 19 ] = (data >> 8) & 0x000000ff;
     ble_p->payload[ ble_p->payload_length + 20 ] = (data >>16) & 0x000000ff;
     ble_p->payload[ ble_p->payload_length + 21 ] = (data >>24) & 0x000000ff;
-    
+
     ble_p->payload_length += 22;
 
     BLE_UNLOCK(ble_p);
@@ -162,7 +162,8 @@ ble_status_t ble_gap_add_service_data_128(ble_t *ble_p, uint8_t * uuid, uint32_t
 void ble_initialize( ble_t *ble_p ) {
 
     mutex_init( &(ble_p->lock) );
-
+    ble_p->access_address   = BLE_ACCESSADDRESS_ADVERTISING;
+    ble_p->pdu_type         = PDU_ADV_NONCONN_IND;
     ble_p->payload_length = 0;
 
     ble_radio_initialize( ble_p );

@@ -31,6 +31,9 @@
 #include <platform/nrf51_radio.h>
 #include <dev/ble_radio.h>
 
+#include <target/gpioconfig.h>
+#include <dev/gpio.h>
+
 
 //   UUID  - 080223be-181a-4f59-b74a-ea5d04af35bc
  const uint8_t uuid1[16] =   {0xbc, 0x35, 0xaf, 0x04, \
@@ -40,6 +43,7 @@
 
 void ble_start(void);
 static void ble_init(const struct app_descriptor *app);
+uint32_t ble_radio_scan_continuous(ble_t * ble_p, lk_time_t timeout);
 
 #if defined(WITH_LIB_CONSOLE)
 #include <lib/console.h>
@@ -68,6 +72,27 @@ static int ble_run(void * args)
     ble_initialize( &ble1 );
 
     while (1) {
+        ble1.channel_index = 39;
+        i =  ble_radio_scan_continuous(&ble1,3000);
+        if ((i==0) && (ble1.payload)) {
+            for (int x=0; x < ble1.payload_length; x++) {
+                        //gpio_set(GPIO_LED1,0);
+
+
+                printf("%02x ",ble1.payload[x]);
+                //gpio_set(GPIO_LED1,1);
+
+            }
+            printf("\n");
+         } else {
+            printf("timed out -%x\n",(uint32_t)ble1.payload);
+         }
+
+
+
+    }
+
+    while (1) {
         //printf("start...\n");
         //if ( mutex_acquire_timeout(&(ble_p->lock),0) == NO_ERROR )
         ble_init_adv_nonconn_ind(&ble1);
@@ -75,7 +100,7 @@ static int ble_run(void * args)
         ble_gap_add_shortname(&ble1, lkbeacon, sizeof(lkbeacon)-1);
         //ble_gap_add_service_data_128(&ble1, uuid1, i++);
         ble1.scannable = true;
-//TODO - need a way to timeout the rx after tx when we don't get a scan request.  
+//TODO - need a way to timeout the rx after tx when we don't get a scan request.
 //          if we accept connections or scans, we should do shortcut to enable rx after
 //          we disable on tx.
         ble1.channel_index = 37;
