@@ -8,7 +8,7 @@ LKMAKEROOT := .
 LKINC := .
 
 # the path relative to LKMAKEROOT where the main lk repository lives
-LKROOT := lk
+LKROOT := ./lk
 
 # set the directory relative to LKMAKEROOT where output will go
 BUILDROOT ?= .
