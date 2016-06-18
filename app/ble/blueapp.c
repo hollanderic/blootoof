@@ -27,8 +27,8 @@
 #include <compiler.h>
 #include <kernel/thread.h>
 #include <lib/ble.h>
-#include <platform/nrf51.h>
-#include <platform/nrf51_radio.h>
+#include <platform/nrf52.h>
+#include <platform/nrf_radio.h>
 #include <platform.h>
 #include <platform/timer.h>
 
