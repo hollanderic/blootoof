@@ -1,1 +1,1 @@
--include lk/makefile
+-include ../../lk/makefile
